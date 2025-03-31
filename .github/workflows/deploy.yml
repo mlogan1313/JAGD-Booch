@@ -27,12 +27,13 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: kombucha-tracker/package-lock.json
           
       - name: Install dependencies
-        run: npm ci
+        run: cd kombucha-tracker && npm ci
         
       - name: Build
-        run: npm run build
+        run: cd kombucha-tracker && npm run build
         
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -40,7 +41,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: './kombucha-tracker/dist'
 
   deploy:
     environment:
