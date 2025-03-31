@@ -5,17 +5,17 @@ import { BatchDetail } from './pages/batch/[id]';
 import EquipmentPage from './pages/equipment';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navigation } from './components/Navigation';
-import { useAuthStore } from './stores/authStore';
+import { useAuth } from './services/auth';
 import { BatchService } from './services/batchService';
 import { EquipmentService } from './services/equipmentService';
 
 const App: React.FC = () => {
-  const { user } = useAuthStore();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (user) {
-      BatchService.initialize(user.uid);
-      EquipmentService.initialize(user.uid);
+      BatchService.getInstance().setUserId(user.uid);
+      EquipmentService.getInstance().initialize(user.uid);
     }
   }, [user]);
 
