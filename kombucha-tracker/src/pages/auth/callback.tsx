@@ -9,12 +9,20 @@ export const AuthCallback = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
+    console.log('Auth callback received code:', code);
 
     if (code) {
-      handleCallback(code).then(() => {
-        navigate('/');
-      });
+      handleCallback(code)
+        .then(() => {
+          console.log('Auth callback successful, navigating to home');
+          navigate('/');
+        })
+        .catch((error) => {
+          console.error('Auth callback failed:', error);
+          navigate('/');
+        });
     } else {
+      console.log('No code received, navigating to home');
       navigate('/');
     }
   }, [handleCallback, navigate]);
