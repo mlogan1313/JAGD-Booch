@@ -21,6 +21,9 @@
 - [ ] Document environment variables in README.md instead of separate example files
 - [ ] Never commit sensitive data in environment files
 
+### Naming Conventions
+- [ ] Use UPPERCASE for enum values (e.g., `EquipmentStatusEnum.AVAILABLE`).
+
 ## 🔄 Development Process
 
 ### Before Starting Work

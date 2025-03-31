@@ -3,8 +3,14 @@
  */
 
 import { create } from 'zustand';
-import { Equipment, Container, EquipmentSchedule } from '../types/equipment';
+import { Equipment } from '../schemas/equipment';
+import { Container, ContainerStatusEnum } from '../schemas/container';
 import { EquipmentService } from '../services/equipmentService';
+import { useAuth } from '../services/auth';
+import { z } from 'zod';
+
+// Keep derived enum type locally for parameter hints
+type ContainerStatus = z.infer<typeof ContainerStatusEnum>;
 
 interface EquipmentState {
   equipment: Equipment[];
@@ -13,17 +19,15 @@ interface EquipmentState {
   error: string | null;
   selectedEquipment: Equipment | null;
   selectedContainer: Container | null;
-  equipmentSchedule: EquipmentSchedule[];
-  
+
   // Actions
   fetchEquipment: () => Promise<void>;
   fetchContainers: () => Promise<void>;
-  addEquipment: (equipment: Omit<Equipment, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addEquipment: (equipment: Omit<Equipment, 'id' | 'metadata'>) => Promise<void>;
   updateEquipment: (id: string, updates: Partial<Equipment>) => Promise<void>;
   deleteEquipment: (id: string) => Promise<void>;
-  addContainer: (container: Omit<Container, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateContainerStatus: (containerId: string, status: Container['status'], batchId?: string) => Promise<void>;
-  fetchEquipmentSchedule: (equipmentId: string, startDate: number, endDate: number) => Promise<void>;
+  addContainer: (container: Omit<Container, 'id' | 'metadata'>) => Promise<void>;
+  updateContainerStatus: (containerId: string, status: z.infer<typeof ContainerStatusEnum>, batchId?: string) => Promise<void>;
   setSelectedEquipment: (equipment: Equipment | null) => void;
   setSelectedContainer: (container: Container | null) => void;
 }
@@ -35,12 +39,19 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   error: null,
   selectedEquipment: null,
   selectedContainer: null,
-  equipmentSchedule: [],
 
   fetchEquipment: async () => {
+    const { user } = useAuth.getState();
+    if (!user) {
+      set({ error: 'User not authenticated', isLoading: false });
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
-      const equipment = await EquipmentService.getInstance().getEquipment();
+      const equipmentService = EquipmentService.getInstance();
+      equipmentService.initialize(user.uid);
+      const equipment = await equipmentService.getEquipment();
       set({ equipment, isLoading: false });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
@@ -48,9 +59,17 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   },
 
   fetchContainers: async () => {
+    const { user } = useAuth.getState();
+    if (!user) {
+      set({ error: 'User not authenticated', isLoading: false });
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
-      const containers = await EquipmentService.getInstance().getContainers();
+      const equipmentService = EquipmentService.getInstance();
+      equipmentService.initialize(user.uid);
+      const containers = await equipmentService.getContainers();
       set({ containers, isLoading: false });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
@@ -58,9 +77,17 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   },
 
   addEquipment: async (equipment) => {
+    const { user } = useAuth.getState();
+    if (!user) {
+      set({ error: 'User not authenticated' });
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
-      const newEquipment = await EquipmentService.getInstance().addEquipment(equipment);
+      const equipmentService = EquipmentService.getInstance();
+      equipmentService.initialize(user.uid);
+      const newEquipment = await equipmentService.addEquipment(equipment);
       set(state => ({
         equipment: [...state.equipment, newEquipment],
         isLoading: false
@@ -71,14 +98,22 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   },
 
   updateEquipment: async (id, updates) => {
+    const { user } = useAuth.getState();
+    if (!user) {
+      set({ error: 'User not authenticated' });
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
-      await EquipmentService.getInstance().updateEquipment(id, updates);
+      const equipmentService = EquipmentService.getInstance();
+      equipmentService.initialize(user.uid);
+      await equipmentService.updateEquipment(id, updates);
       set(state => ({
-        equipment: state.equipment.map(eq => 
+        equipment: state.equipment.map(eq =>
           eq.id === id ? { ...eq, ...updates } : eq
         ),
-        selectedEquipment: state.selectedEquipment?.id === id 
+        selectedEquipment: state.selectedEquipment?.id === id
           ? { ...state.selectedEquipment, ...updates }
           : state.selectedEquipment,
         isLoading: false
@@ -89,23 +124,45 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   },
 
   deleteEquipment: async (id) => {
+    const { user } = useAuth.getState();
+    if (!user) {
+      set({ error: 'User not authenticated' });
+      return;
+    }
+
+    const originalEquipment = [...get().equipment];
+    set(state => ({
+      equipment: state.equipment.filter(eq => eq.id !== id),
+      selectedEquipment: state.selectedEquipment?.id === id ? null : state.selectedEquipment,
+    }));
+
     set({ isLoading: true, error: null });
     try {
-      await EquipmentService.getInstance().deleteEquipment(id);
-      set(state => ({
-        equipment: state.equipment.filter(eq => eq.id !== id),
-        selectedEquipment: state.selectedEquipment?.id === id ? null : state.selectedEquipment,
-        isLoading: false
-      }));
+      const equipmentService = EquipmentService.getInstance();
+      equipmentService.initialize(user.uid);
+      await equipmentService.deleteEquipment(id);
+      set({ isLoading: false });
     } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+      set({
+        error: (error as Error).message,
+        isLoading: false,
+        equipment: originalEquipment
+      });
     }
   },
 
   addContainer: async (container) => {
+    const { user } = useAuth.getState();
+    if (!user) {
+      set({ error: 'User not authenticated' });
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
-      const newContainer = await EquipmentService.getInstance().addContainer(container);
+      const equipmentService = EquipmentService.getInstance();
+      equipmentService.initialize(user.uid);
+      const newContainer = await equipmentService.addContainer(container);
       set(state => ({
         containers: [...state.containers, newContainer],
         isLoading: false
@@ -116,42 +173,38 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   },
 
   updateContainerStatus: async (containerId, status, batchId) => {
-    set({ isLoading: true, error: null });
-    try {
-      await EquipmentService.getInstance().updateContainerStatus(containerId, status, batchId);
-      set(state => ({
-        containers: state.containers.map(container => 
-          container.id === containerId 
-            ? { 
-                ...container, 
-                status,
-                currentBatchId: status === 'FILLED' ? batchId : undefined,
-                fillDate: status === 'FILLED' ? Date.now() : container.fillDate,
-                emptyDate: status === 'EMPTY' ? Date.now() : container.emptyDate
-              }
+    const { user } = useAuth.getState();
+    if (!user) {
+      set({ error: 'User not authenticated' });
+      return;
+    }
+
+    const originalContainers = [...get().containers];
+    const originalSelected = get().selectedContainer ? {...get().selectedContainer} : null;
+    set(state => ({
+        containers: state.containers.map(container =>
+            container.id === containerId
+            ? { ...container, status: { ...container.status, current: status, lastUpdated: Date.now(), currentBatchId: batchId || null } }
             : container
         ),
         selectedContainer: state.selectedContainer?.id === containerId
-          ? { ...state.selectedContainer, status }
-          : state.selectedContainer,
-        isLoading: false
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
-    }
-  },
+            ? { ...state.selectedContainer, status: { ...state.selectedContainer.status, current: status, lastUpdated: Date.now(), currentBatchId: batchId || null } }
+            : state.selectedContainer,
+    }));
 
-  fetchEquipmentSchedule: async (equipmentId, startDate, endDate) => {
     set({ isLoading: true, error: null });
     try {
-      const schedule = await EquipmentService.getInstance().getEquipmentSchedule(
-        equipmentId,
-        startDate,
-        endDate
-      );
-      set({ equipmentSchedule: schedule, isLoading: false });
+      const equipmentService = EquipmentService.getInstance();
+      equipmentService.initialize(user.uid);
+      await equipmentService.updateContainerStatus(containerId, status, batchId);
+      set({ isLoading: false });
     } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+      set({ 
+          error: (error as Error).message, 
+          isLoading: false, 
+          containers: originalContainers,
+          selectedContainer: originalSelected
+        });
     }
   },
 

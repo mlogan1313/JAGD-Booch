@@ -1,12 +1,10 @@
-import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, GithubAuthProvider, signOut, onAuthStateChanged, User, signInWithEmailAndPassword } from 'firebase/auth';
 import { create } from 'zustand';
-import { auth, database } from './firebase';
-import { ref, get, set } from 'firebase/database';
-import { BatchService } from './batchService';
-import { EquipmentService } from './equipmentService';
-import { useBatchStore } from '../stores/batchStore';
-import { useEquipmentStore } from '../stores/equipmentStore';
+import { auth } from './firebase';
 import { UserService } from './userService';
+import { UserCredential } from "firebase/auth";
+import { z } from 'zod';
+import { UserRoleSchema } from '../schemas/user';
 
 interface AuthState {
   user: User | null;
@@ -21,75 +19,6 @@ export const useAuth = create<AuthState>((set) => ({
   isLoading: true,
   error: null,
 }));
-
-// Initialize auth state
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    try {
-      // Check if user structure exists
-      const userRef = ref(database, `users/${user.uid}`);
-      const userSnapshot = await get(userRef);
-      
-      if (!userSnapshot.exists()) {
-        console.log('Creating user structure for:', user.uid);
-        // Create user structure if it doesn't exist
-        await set(userRef, {
-          batches: {},
-          equipment: {},
-          containers: {},
-          createdAt: Date.now(),
-          lastLogin: Date.now(),
-          role: 'brewer' // Default role
-        });
-      } else {
-        // Update last login time
-        await set(ref(database, `users/${user.uid}/lastLogin`), Date.now());
-      }
-
-      useAuth.setState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      });
-
-      // Initialize services
-      const batchService = BatchService.getInstance();
-      batchService.setUserId(user.uid);
-      useBatchStore.getState().setBatchService(batchService);
-      useBatchStore.getState().fetchBatches();
-
-      const equipmentService = EquipmentService.getInstance();
-      equipmentService.initialize(user.uid);
-      useEquipmentStore.getState().fetchEquipment();
-      useEquipmentStore.getState().fetchContainers();
-    } catch (error) {
-      console.error('Error initializing user:', error);
-      useAuth.setState({
-        error: 'Failed to initialize user data',
-        isLoading: false
-      });
-    }
-  } else {
-    useAuth.setState({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-      error: null,
-    });
-
-    // Clear services
-    const batchService = BatchService.getInstance();
-    batchService.setUserId('');
-    useBatchStore.getState().setBatchService(null);
-    useBatchStore.getState().batches = [];
-
-    const equipmentService = EquipmentService.getInstance();
-    equipmentService.initialize('');
-    useEquipmentStore.getState().equipment = [];
-    useEquipmentStore.getState().containers = [];
-  }
-});
 
 export class AuthService {
   private static instance: AuthService;
@@ -110,11 +39,23 @@ export class AuthService {
   private setupAuthStateListener() {
     onAuthStateChanged(auth, async (user) => {
       if (user) {
+        console.log('AuthService Listener: User detected', user.uid);
         this.userService.setUserId(user.uid);
-        await this.userService.createUserIfNotExists();
+        try {
+           await this.userService.createUserIfNotExists(user);
+           console.log('AuthService Listener: User profile check complete');
+           useAuth.setState({ user, isAuthenticated: true, isLoading: false, error: null });
+        } catch (error: any) {
+           console.error('AuthService Listener: Error ensuring user profile:', error);
+           useAuth.setState({ user, isAuthenticated: true, isLoading: false, error: error.message });
+        }
       } else {
-        this.userService.setUserId('');
+        console.log('AuthService Listener: No user detected');
+        useAuth.setState({ user: null, isAuthenticated: false, isLoading: false, error: null });
       }
+    }, (error) => {
+        console.error('Auth State Error:', error);
+        useAuth.setState({ user: null, isAuthenticated: false, isLoading: false, error: error.message });
     });
   }
 
@@ -123,15 +64,48 @@ export class AuthService {
     return userCredential.user;
   }
 
+  async signInWithGoogle(): Promise<UserCredential> {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      console.log("Google Sign-In successful:", result.user.uid);
+      return result;
+    } catch (error: any) {
+      const errorCode = error.code;
+      const errorMessage = error.message;
+      const email = error.customData?.email;
+      const credential = GoogleAuthProvider.credentialFromError(error);
+      console.error("Google Sign-In Error:", errorCode, errorMessage, email, credential);
+      throw error;
+    }
+  }
+
+  async signInWithGitHub(): Promise<UserCredential> {
+    const provider = new GithubAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      console.log("GitHub Sign-In successful:", result.user.uid);
+      return result;
+    } catch (error: any) {
+      const errorCode = error.code;
+      const errorMessage = error.message;
+      const email = error.customData?.email;
+      const credential = GithubAuthProvider.credentialFromError(error);
+      console.error("GitHub Sign-In Error:", errorCode, errorMessage, email, credential);
+      throw error;
+    }
+  }
+
   async signOut(): Promise<void> {
     await signOut(auth);
+    console.log("Sign out successful");
   }
 
   getCurrentUser(): User | null {
     return auth.currentUser;
   }
 
-  async getUserRole(): Promise<'admin' | 'brewer' | 'viewer' | null> {
+  async getUserRole(): Promise<z.infer<typeof UserRoleSchema> | null> {
     return this.userService.getUserRole();
   }
 } 

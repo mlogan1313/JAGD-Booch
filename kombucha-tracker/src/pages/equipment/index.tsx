@@ -8,8 +8,10 @@ import { EquipmentList } from '../../components/EquipmentList';
 import { ContainerList } from '../../components/ContainerList';
 import { AddEquipmentForm } from '../../components/AddEquipmentForm';
 import { AddContainerForm } from '../../components/AddContainerForm';
+import { useAuth } from '../../services/auth';
 
 const EquipmentPage: React.FC = () => {
+  const { user } = useAuth();
   const { 
     equipment, 
     containers, 
@@ -20,9 +22,21 @@ const EquipmentPage: React.FC = () => {
   } = useEquipmentStore();
 
   useEffect(() => {
-    fetchEquipment();
-    fetchContainers();
-  }, [fetchEquipment, fetchContainers]);
+    if (user) {
+      fetchEquipment();
+      fetchContainers();
+    }
+  }, [user, fetchEquipment, fetchContainers]);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">Please sign in to view equipment.</div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -47,22 +61,20 @@ const EquipmentPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Equipment Management</h1>
-          <div className="space-x-4">
-            <AddEquipmentForm />
-            <AddContainerForm />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="space-y-8">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Equipment</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Equipment</h2>
+            <div className="mb-4">
+              <AddEquipmentForm />
+            </div>
             <EquipmentList equipment={equipment} />
           </div>
-          
+
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Containers</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Containers</h2>
+            <div className="mb-4">
+              <AddContainerForm />
+            </div>
             <ContainerList containers={containers} />
           </div>
         </div>

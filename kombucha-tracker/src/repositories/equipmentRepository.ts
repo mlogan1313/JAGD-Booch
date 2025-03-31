@@ -1,13 +1,8 @@
 import { BaseRepository } from './baseRepository';
-import { 
-  Equipment, 
-  EquipmentSchema,
-  EquipmentMaintenanceSchema
-} from '../schemas/batch';
+import { Equipment, EquipmentSchema, EquipmentStatusEnum } from '../schemas/equipment';
 import { ref, get, set, update } from 'firebase/database';
 import { database } from '../services/firebase';
-
-type EquipmentStatus = 'available' | 'in_use' | 'maintenance' | 'cleaning';
+import { z } from 'zod';
 
 export class EquipmentRepository extends BaseRepository<Equipment, typeof EquipmentSchema> {
   constructor() {
@@ -16,7 +11,7 @@ export class EquipmentRepository extends BaseRepository<Equipment, typeof Equipm
 
   async updateStatus(
     equipmentId: string,
-    status: EquipmentStatus,
+    status: z.infer<typeof EquipmentStatusEnum>,
     currentBatchId: string | null = null
   ): Promise<void> {
     const equipmentRef = ref(database, `equipment/${equipmentId}`);
@@ -42,8 +37,9 @@ export class EquipmentRepository extends BaseRepository<Equipment, typeof Equipm
   async recordMaintenance(
     equipmentId: string,
     maintenance: {
-      cleaned?: boolean;
-      sanitized?: boolean;
+      lastCleaned?: boolean;
+      lastMaintained?: boolean;
+      nextMaintenance?: number | null;
       notes?: string;
     }
   ): Promise<void> {
@@ -55,13 +51,17 @@ export class EquipmentRepository extends BaseRepository<Equipment, typeof Equipm
     }
 
     try {
-      const currentMaintenance = currentEquipment.val().maintenance;
-      const updatedMaintenance = {
-        lastCleaned: maintenance.cleaned ? Date.now() : currentMaintenance.lastCleaned,
-        lastSanitized: maintenance.sanitized ? Date.now() : currentMaintenance.lastSanitized,
-        notes: maintenance.notes || currentMaintenance.notes
-      };
-      await update(equipmentRef, { maintenance: updatedMaintenance });
+      const currentMaintenanceData = currentEquipment.val()?.maintenance || {};
+      const updatedMaintenance: Partial<Equipment['maintenance']> = {};
+
+      if (maintenance.lastCleaned) updatedMaintenance.lastCleaned = Date.now();
+      if (maintenance.lastMaintained) updatedMaintenance.lastMaintained = Date.now();
+      if (maintenance.nextMaintenance !== undefined) updatedMaintenance.nextMaintenance = maintenance.nextMaintenance;
+      if (maintenance.notes) updatedMaintenance.notes = maintenance.notes;
+
+      const finalMaintenance = { ...currentMaintenanceData, ...updatedMaintenance };
+
+      await update(equipmentRef, { maintenance: finalMaintenance });
     } catch (error) {
       console.error(`Error recording maintenance for equipment ${equipmentId}:`, error);
       throw error;
@@ -76,12 +76,12 @@ export class EquipmentRepository extends BaseRepository<Equipment, typeof Equipm
     const equipment: Equipment[] = [];
     snapshot.forEach((childSnapshot) => {
       try {
-        const equipmentData = childSnapshot.val();
-        if (equipmentData.status.current === 'available') {
-          equipment.push(EquipmentSchema.parse(equipmentData));
+        const equipmentData = EquipmentSchema.parse(childSnapshot.val());
+        if (equipmentData.status.current === EquipmentStatusEnum.Enum.AVAILABLE) {
+          equipment.push(equipmentData);
         }
       } catch (error) {
-        console.error(`Validation error for equipment:`, error);
+        console.error(`Validation error parsing available equipment: ${childSnapshot.key}`, error);
       }
     });
     return equipment;
@@ -95,12 +95,12 @@ export class EquipmentRepository extends BaseRepository<Equipment, typeof Equipm
     const equipment: Equipment[] = [];
     snapshot.forEach((childSnapshot) => {
       try {
-        const equipmentData = childSnapshot.val();
-        if (equipmentData.status.current === 'in_use') {
-          equipment.push(EquipmentSchema.parse(equipmentData));
+        const equipmentData = EquipmentSchema.parse(childSnapshot.val());
+        if (equipmentData.status.current === EquipmentStatusEnum.Enum.IN_USE) {
+          equipment.push(equipmentData);
         }
       } catch (error) {
-        console.error(`Validation error for equipment:`, error);
+        console.error(`Validation error parsing in-use equipment: ${childSnapshot.key}`, error);
       }
     });
     return equipment;

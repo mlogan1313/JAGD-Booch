@@ -1,20 +1,18 @@
 import { ref, get, set, update } from 'firebase/database';
 import { database } from './firebase';
-
-interface UserData {
-  batches: Record<string, any>;
-  equipment: Record<string, any>;
-  containers: Record<string, any>;
-  createdAt: number;
-  lastLogin: number;
-  role: 'admin' | 'brewer' | 'viewer';
-}
+import { UserProfile, UserRoleSchema } from '../schemas/user';
+import { UserRepository } from '../repositories/userRepository';
+import { z } from 'zod';
+import { User } from 'firebase/auth';
 
 export class UserService {
   private static instance: UserService;
   private userId: string | null = null;
+  private userRepository: UserRepository;
 
-  private constructor() {}
+  private constructor() {
+    this.userRepository = new UserRepository();
+  }
 
   static getInstance(): UserService {
     if (!UserService.instance) {
@@ -27,43 +25,50 @@ export class UserService {
     this.userId = userId;
   }
 
-  private get userRef() {
-    if (!this.userId) throw new Error('User ID not set');
-    return ref(database, `users/${this.userId}`);
+  private ensureUserId(): string {
+    if (!this.userId) throw new Error('UserService: User ID not set');
+    return this.userId;
   }
 
-  async getUser(): Promise<UserData | null> {
-    const snapshot = await get(this.userRef);
-    return snapshot.val();
+  async getUser(): Promise<UserProfile | null> {
+    const userId = this.ensureUserId();
+    return this.userRepository.get(userId);
   }
 
-  async createUserIfNotExists(): Promise<void> {
-    const snapshot = await get(this.userRef);
-    if (!snapshot.exists()) {
-      const userData: UserData = {
-        batches: {},
-        equipment: {},
-        containers: {},
-        createdAt: Date.now(),
-        lastLogin: Date.now(),
-        role: 'brewer' // Default role
-      };
-      await set(this.userRef, userData);
-    } else {
-      // Update last login even if user exists
-      await update(this.userRef, {
-        lastLogin: Date.now()
-      });
+  async createUserIfNotExists(firebaseUser: User): Promise<UserProfile> {
+    const userId = this.ensureUserId();
+    if (userId !== firebaseUser.uid) {
+      throw new Error(`Mismatched user IDs in UserService: ${userId} vs ${firebaseUser.uid}`);
     }
+
+    let userProfile = await this.userRepository.get(userId);
+    if (!userProfile) {
+      console.log(`Creating user profile for ${userId}...`);
+      const currentTime = Date.now();
+      const newUserProfileData: Pick<UserProfile, 'displayName' | 'email' | 'role' | 'isActive' | 'lastLogin' | 'deactivatedAt' | 'createdBy'> = {
+        displayName: firebaseUser.displayName || 'Unnamed User',
+        email: firebaseUser.email || 'no-email@example.com',
+        role: UserRoleSchema.Enum.brewer,
+        isActive: true,
+        lastLogin: currentTime,
+        deactivatedAt: null,
+        createdBy: userId
+      };
+      userProfile = await this.userRepository.create(newUserProfileData, userId);
+    } else {
+      const newLastLogin = Date.now();
+      await this.userRepository.update(userId, { lastLogin: newLastLogin }, userId);
+      userProfile.lastLogin = newLastLogin;
+    }
+    return userProfile;
   }
 
-  async updateUserRole(role: UserData['role']): Promise<void> {
-    await update(this.userRef, {
-      role
-    });
+  async updateUserRole(role: z.infer<typeof UserRoleSchema>): Promise<void> {
+    const userId = this.ensureUserId();
+    await this.userRepository.updateRole(userId, role);
   }
 
-  async getUserRole(): Promise<UserData['role'] | null> {
+  async getUserRole(): Promise<z.infer<typeof UserRoleSchema> | null> {
     const user = await this.getUser();
     return user?.role || null;
   }

@@ -1,10 +1,59 @@
 /**
- * Types for batch management and tracking
+ * Types for batch management and tracking - Derived from Zod schemas
  */
 
-import { EquipmentType } from './equipment';
-import { QualityNote, RecallInfo } from './quality';
+// Import Zod schemas to derive types from
+import { z } from 'zod';
+import {
+  BatchSchema,
+  BatchCodeSchema,
+  FermentationStageSchema,
+  MeasurementSchema,
+  TaskSchema,
+  ChecklistSchema,
+  FlavoringDetailsSchema,
+  QualityNoteSchema,
+  RecallInfoSchema,
+  FinishingDetailsSchema,
+  EquipmentHistoryItemSchema,
+  SplitPortionSchema,
+  StageEnum,
+  BatchTypeEnum,
+  FinishingDetailsSchema as FinishingZodSchema
+} from '../schemas/batch';
 
+// No longer need direct imports from other type files if schemas cover everything
+// import { EquipmentType } from './equipment';
+// import { QualityNote, RecallInfo } from './quality';
+
+// Derive types directly from Zod schemas
+export type BatchStage = z.infer<typeof StageEnum>;
+export type BatchType = z.infer<typeof BatchTypeEnum>;
+export type FinishingType = z.infer<typeof FinishingZodSchema>['type'];
+
+export type BatchCode = z.infer<typeof BatchCodeSchema>;
+export type FermentationStage = z.infer<typeof FermentationStageSchema>;
+export type Measurement = z.infer<typeof MeasurementSchema>;
+export type Task = z.infer<typeof TaskSchema>;
+export type Checklist = z.infer<typeof ChecklistSchema>;
+export type FlavoringDetails = z.infer<typeof FlavoringDetailsSchema>;
+export type QualityNote = z.infer<typeof QualityNoteSchema>;
+export type RecallInfo = z.infer<typeof RecallInfoSchema>;
+export type FinishingDetails = z.infer<typeof FinishingDetailsSchema>;
+export type EquipmentHistoryItem = z.infer<typeof EquipmentHistoryItemSchema>;
+export type SplitPortion = z.infer<typeof SplitPortionSchema>;
+export type Batch = z.infer<typeof BatchSchema>;
+
+// Keep the FirebaseBatchData interface if it's used for structuring data in Firebase
+// It uses the derived Batch type, so it should remain consistent.
+export interface FirebaseBatchData {
+  [userId: string]: {
+    [batchId: string]: Batch;
+  };
+}
+
+// ---- Remove old manual type/interface definitions ----
+/*
 export type BatchStage = 
   | '1F'          // Primary fermentation in kettle
   | '2F'          // Secondary fermentation in fermenter
@@ -62,7 +111,7 @@ export interface Batch {
   batchCode: BatchCode;
   batchNumber: number;
   batchDate: number;
-  batchType: '1F' | '2F' | 'KEG' | 'BOTTLE';
+  batchType: '1F' | '2F' | 'KEG' | 'BOTTLE'; // <-- Replace with BatchType
   
   // Stage Tracking
   stage: BatchStage;
@@ -112,7 +161,7 @@ export interface Batch {
   
   // Finishing Details
   finishingDetails?: {
-    type: 'KEG' | 'BOTTLE';
+    type: 'KEG' | 'BOTTLE'; // <-- Replace with FinishingType
     containerIds: string[];
     date: number;
     volume: number;
@@ -127,9 +176,4 @@ export interface Batch {
   createdAt: number;
   updatedAt: number;
 }
-
-export interface FirebaseBatchData {
-  [userId: string]: {
-    [batchId: string]: Batch;
-  };
-} 
+*/ 

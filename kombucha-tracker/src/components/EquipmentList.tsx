@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Equipment } from '../types/equipment';
+import { Equipment } from '../schemas/batch';
 import { useEquipmentStore } from '../stores/equipmentStore';
 
 interface EquipmentListProps {
@@ -13,8 +13,14 @@ interface EquipmentListProps {
 export const EquipmentList: React.FC<EquipmentListProps> = ({ equipment }) => {
   const { updateEquipment, deleteEquipment, setSelectedEquipment } = useEquipmentStore();
 
-  const handleStatusChange = async (id: string, newStatus: Equipment['status']) => {
-    await updateEquipment(id, { status: newStatus });
+  const handleStatusChange = async (id: string, newStatus: Equipment['status']['current']) => {
+    await updateEquipment(id, {
+      status: {
+        current: newStatus,
+        lastUpdated: Date.now(),
+        currentBatchId: null
+      }
+    });
   };
 
   const handleDelete = async (id: string) => {
@@ -33,29 +39,30 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({ equipment }) => {
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      item.status === 'AVAILABLE' ? 'bg-green-100 text-green-800' :
-                      item.status === 'IN_USE' ? 'bg-blue-100 text-blue-800' :
+                      item.status.current === 'available' ? 'bg-green-100 text-green-800' :
+                      item.status.current === 'in_use' ? 'bg-blue-100 text-blue-800' :
                       'bg-red-100 text-red-800'
                     }`}>
-                      {item.status}
+                      {item.status.current}
                     </span>
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-gray-900">{item.name}</h3>
-                    <p className="text-sm text-gray-500">{item.type}</p>
-                    <p className="text-sm text-gray-500">Capacity: {item.capacity} gallons</p>
+                    <h3 className="text-sm font-medium text-gray-900">{item.metadata.name}</h3>
+                    <p className="text-sm text-gray-500">{item.metadata.type}</p>
+                    <p className="text-sm text-gray-500">Capacity: {item.metadata.capacity} gallons</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <select
-                    value={item.status}
-                    onChange={(e) => handleStatusChange(item.id, e.target.value as Equipment['status'])}
+                    value={item.status.current}
+                    onChange={(e) => handleStatusChange(item.id, e.target.value as Equipment['status']['current'])}
                     className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    aria-label={`Status for ${item.name}`}
+                    aria-label={`Status for ${item.metadata.name}`}
                   >
-                    <option value="AVAILABLE">Available</option>
-                    <option value="IN_USE">In Use</option>
-                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="available">Available</option>
+                    <option value="in_use">In Use</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="cleaning">Cleaning</option>
                   </select>
                   <button
                     onClick={() => setSelectedEquipment(item)}

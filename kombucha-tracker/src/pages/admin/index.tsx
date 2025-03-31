@@ -2,47 +2,29 @@ import { useState } from 'react';
 import { useAuth } from '../../services/auth';
 import { BatchService } from '../../services/batchService';
 import { EquipmentService } from '../../services/equipmentService';
+import { SeedService } from '../../services/seedService';
 
 export const AdminPage: React.FC = () => {
   const { user } = useAuth();
   const [seedingStatus, setSeedingStatus] = useState<'idle' | 'seeding' | 'complete' | 'error'>('idle');
   const [message, setMessage] = useState<string>('');
 
-  const handleSeedBatches = async () => {
+  const handleSeedAllData = async () => {
     if (!user) return;
     
     try {
       setSeedingStatus('seeding');
-      setMessage('Seeding batches...');
+      setMessage('Seeding all data...');
       
-      const batchService = BatchService.getInstance();
-      batchService.setUserId(user.uid);
-      await batchService.seedSampleData(user.uid);
-      
-      setSeedingStatus('complete');
-      setMessage('Successfully seeded batches!');
-    } catch (error) {
-      setSeedingStatus('error');
-      setMessage('Error seeding batches: ' + (error instanceof Error ? error.message : String(error)));
-    }
-  };
-
-  const handleSeedEquipment = async () => {
-    if (!user) return;
-    
-    try {
-      setSeedingStatus('seeding');
-      setMessage('Seeding equipment...');
-      
-      const equipmentService = EquipmentService.getInstance();
-      equipmentService.initialize(user.uid);
-      await equipmentService.seedSampleData(user.uid);
+      const seedService = SeedService.getInstance();
+      seedService.setUserId(user.uid);
+      await seedService.seedSampleData();
       
       setSeedingStatus('complete');
-      setMessage('Successfully seeded equipment!');
+      setMessage('Successfully seeded all data!');
     } catch (error) {
       setSeedingStatus('error');
-      setMessage('Error seeding equipment: ' + (error instanceof Error ? error.message : String(error)));
+      setMessage('Error seeding data: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
@@ -57,16 +39,10 @@ export const AdminPage: React.FC = () => {
       setSeedingStatus('seeding');
       setMessage('Clearing all data...');
       
-      const batchService = BatchService.getInstance();
-      const equipmentService = EquipmentService.getInstance();
+      const seedService = SeedService.getInstance();
+      seedService.setUserId(user.uid);
       
-      batchService.setUserId(user.uid);
-      equipmentService.initialize(user.uid);
-      
-      await Promise.all([
-        batchService.clearAllData(),
-        equipmentService.clearAllData()
-      ]);
+      await seedService.clearAllData();
       
       setSeedingStatus('complete');
       setMessage('Successfully cleared all data!');
@@ -104,18 +80,11 @@ export const AdminPage: React.FC = () => {
           <h2 className="text-xl font-semibold mb-4">Seed Data</h2>
           <div className="space-y-4">
             <button
-              onClick={handleSeedBatches}
+              onClick={handleSeedAllData}
               disabled={seedingStatus === 'seeding'}
               className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
             >
-              Seed Batches
-            </button>
-            <button
-              onClick={handleSeedEquipment}
-              disabled={seedingStatus === 'seeding'}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-            >
-              Seed Equipment
+              Seed All Data
             </button>
           </div>
         </div>

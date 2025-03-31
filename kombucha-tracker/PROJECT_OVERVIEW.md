@@ -17,32 +17,40 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - [x] Configure TypeScript
 - [x] Set up Tailwind CSS
 - [x] Configure project structure
-- [x] Install Firebase dependencies
-- [x] Create Firebase project
-- [x] Configure Firebase Authentication
-- [x] Set up Firebase Realtime Database
-- [x] Configure Firebase Security Rules
 - [ ] Implement offline persistence
 
-### Data Layer
-- [x] Design Firebase data structure
-- [x] Implement Firebase data storage
-- [ ] Set up offline-first functionality
-- [x] Create data utilities
-- [x] Implement real-time sync
-- [x] Implement batch code system
-- [x] Set up equipment tracking
-- [x] Implement container management
+### Backend Migration (Supabase + Prisma)
+- [ ] Create Supabase project (User Action)
+- [ ] Set up Supabase environment variables (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, etc.) (User Action)
+- [ ] Remove Firebase dependencies
+- [ ] Add Prisma and Supabase dependencies
+- [ ] Define Prisma schema (`schema.prisma`)
+- [ ] Run initial database migration (`prisma migrate dev`)
+- [ ] Generate Prisma Client (`prisma generate`)
+- [ ] Initialize Supabase client
+- [ ] Refactor Authentication (AuthService, useAuth, components) for Supabase Auth
+- [ ] Refactor Repository/Service Layer (Remove Firebase Repos, Use Prisma Client in Services)
+- [ ] Refactor Seeding (SeedService)
+- [ ] Integrate Zod validation (as needed)
+- [ ] Update documentation (Architecture, README)
 
-### Core Features
-- [x] Authentication flow (Firebase)
-- [x] Dashboard view
+### Data Layer (Post-Migration)
+- [ ] Design/Confirm relational data structure (Prisma Schema)
+- [ ] Implement data access logic (Prisma Client)
+- [ ] Set up real-time sync (Supabase Realtime)
+- [ ] Implement batch code system
+- [ ] Implement equipment tracking
+- [ ] Implement container management
+
+### Core Features (Post-Migration)
+- [ ] Authentication flow (Supabase)
+- [ ] Dashboard view
 - [ ] Batch creation form
 - [ ] Batch detail view
-- [x] Checklist component
+- [ ] Checklist component
 - [ ] Log entry interface
 - [ ] Timeline guidance
-- [x] Equipment management
+- [ ] Equipment management
 - [ ] Batch transfer interface
 - [ ] Quality control tracking
 - [ ] Recall management
@@ -53,50 +61,43 @@ Build a professional-grade web app for tracking daily kombucha production, using
   - [ ] User access restrictions
 
 ### Polish & Optimization
-- [x] Mobile responsiveness
+- [ ] Mobile responsiveness
 - [ ] Offline support
 - [ ] Data export/import
-- [x] Error handling
-- [x] Loading states
+- [ ] Error handling
+- [ ] Loading states
 - [ ] Batch lineage visualization
 - [ ] Quality control reports
 - [ ] Recall tracking system
 
 ---
 
-## 🧱 Current App Structure
+## 🧱 Current App Structure (Refactoring In Progress)
 
 - **Frontend**: React + Vite + TypeScript
 - **UI Framework**: Tailwind CSS (mobile-first)
-- **State Management**: Zustand + Firebase
-- **Authentication**: Firebase Auth
-- **Data Storage**: Firebase Realtime Database
+- **State Management**: Zustand
+- **Authentication**: ~~Firebase Auth~~ -> Supabase Auth
+- **Data Storage**: ~~Firebase Realtime Database~~ -> Supabase (PostgreSQL)
+- **ORM**: Prisma
 - **Deployment**: GitHub Pages
-- **Daily Dashboard**: Lists active batches with day count and stage
-- **Checklist View**: Per-batch interactive tasks for each phase
-- **Equipment Management**: 
-  - Track kettles, fermenters, and containers
-  - Equipment scheduling and availability
-  - Maintenance and cleaning tracking
-  - Container status management
-- **Batch Tracking**: Complete lineage from 1F to retail
 
 ---
 
-## ✅ Features (MVP)
+## ✅ Features (MVP - Refactoring In Progress)
 
-- [x] Firebase Authentication
-- [x] Protected routes
-- [x] Dashboard with active batches
-- [x] Phase-specific task checklists
+- [ ] Authentication flow (Supabase)
+- [ ] Protected routes
+- [ ] Dashboard with active batches
+- [ ] Phase-specific task checklists
 - [ ] Batch log entry UI (pH, temp, notes)
 - [ ] Batch creation form
 - [ ] Timeline guidance (auto next steps)
-- [x] Cross-device sync via Firebase
-- [ ] Offline support with Firebase persistence
+- [ ] Cross-device sync via Supabase
+- [ ] Offline support
 - [ ] Export to CSV or JSON format
-- [x] Batch code system
-- [x] Equipment tracking
+- [ ] Batch code system
+- [ ] Equipment tracking
 - [ ] Quality control logging
 - [ ] Basic recall management
 
@@ -104,13 +105,15 @@ Build a professional-grade web app for tracking daily kombucha production, using
 
 ## 🔜 Near-Term Plans
 
-- [x] Set up Firebase project and configuration
-- [x] Configure Firebase Security Rules for data access
+- **Complete Supabase/Prisma Migration:**
+  - [ ] Finalize Prisma schema
+  - [ ] Refactor Auth, Services, Stores
+  - [ ] Implement Seeding
 - [ ] Build a **batch logging interface** (pH, temp, flavor notes)
 - [ ] Add a **batch timeline engine** based on fermentation start date
 - [ ] Implement **batch creation/editing**
-- [ ] Implement offline-first functionality with Firebase sync
-- [x] Create equipment management interface
+- [ ] Implement offline-first functionality with Supabase sync
+- [ ] Create equipment management interface
 - [ ] Implement batch transfer system
 - [ ] Add quality control tracking
 - [ ] Set up recall management
@@ -118,7 +121,6 @@ Build a professional-grade web app for tracking daily kombucha production, using
   - [ ] Set up user roles and permissions
   - [ ] Create user management interface
   - [ ] Implement user activity tracking
-  - [ ] Configure access control rules
 
 ---
 
@@ -134,6 +136,7 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - Equipment maintenance scheduling
 - Retail distribution tracking
 - Customer feedback integration
+- **Implement Account Linking:** Allow users to link multiple sign-in providers (Google, GitHub, etc.) to a single user account to prevent duplicates.
 
 ---
 

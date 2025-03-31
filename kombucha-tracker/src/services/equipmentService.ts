@@ -2,15 +2,21 @@
  * Service for managing brewing equipment and containers
  */
 
-import { ref, get, set, push, update, query, orderByChild, equalTo } from 'firebase/database';
-import { database } from './firebase';
-import { Equipment, Container, EquipmentSchedule } from '../types/equipment';
+import { Equipment, EquipmentSchema, Container, ContainerSchema } from '../schemas/batch';
+import { EquipmentRepository } from '../repositories/equipmentRepository';
+import { ContainerRepository } from '../repositories/containerRepository';
+import { EquipmentType, EquipmentStatus, ContainerType, ContainerStatus } from '../types/enums';
 
 export class EquipmentService {
   private static instance: EquipmentService;
   private userId: string | null = null;
+  private equipmentRepository: EquipmentRepository;
+  private containerRepository: ContainerRepository;
 
-  private constructor() {}
+  private constructor() {
+    this.equipmentRepository = new EquipmentRepository();
+    this.containerRepository = new ContainerRepository();
+  }
 
   /**
    * Get the singleton instance of EquipmentService
@@ -34,22 +40,7 @@ export class EquipmentService {
    */
   public async getEquipment(): Promise<Equipment[]> {
     if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const equipmentRef = ref(database, `users/${this.userId}/equipment`);
-    const snapshot = await get(equipmentRef);
-    
-    if (!snapshot.exists()) return [];
-    
-    return Object.entries(snapshot.val()).map(([id, data]) => ({
-      id,
-      name: (data as any).name,
-      type: (data as any).type,
-      capacity: (data as any).capacity,
-      status: (data as any).status,
-      notes: (data as any).notes,
-      createdAt: (data as any).createdAt,
-      updatedAt: (data as any).updatedAt
-    }));
+    return this.equipmentRepository.getAll(this.userId);
   }
 
   /**
@@ -57,44 +48,15 @@ export class EquipmentService {
    */
   public async getEquipmentById(id: string): Promise<Equipment | null> {
     if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const equipmentRef = ref(database, `users/${this.userId}/equipment/${id}`);
-    const snapshot = await get(equipmentRef);
-    
-    if (!snapshot.exists()) return null;
-    
-    const data = snapshot.val() as any;
-    return {
-      id,
-      name: data.name,
-      type: data.type,
-      capacity: data.capacity,
-      status: data.status,
-      notes: data.notes,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt
-    };
+    return this.equipmentRepository.get(id, this.userId);
   }
 
   /**
    * Add new equipment
    */
-  public async addEquipment(equipment: Omit<Equipment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Equipment> {
+  public async addEquipment(equipment: Omit<Equipment, 'id'>): Promise<Equipment> {
     if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const equipmentRef = ref(database, `users/${this.userId}/equipment`);
-    const newEquipmentRef = push(equipmentRef);
-    
-    const now = Date.now();
-    const newEquipment: Equipment = {
-      ...equipment,
-      id: newEquipmentRef.key!,
-      createdAt: now,
-      updatedAt: now
-    };
-    
-    await set(newEquipmentRef, newEquipment);
-    return newEquipment;
+    return this.equipmentRepository.create(equipment, this.userId);
   }
 
   /**
@@ -102,18 +64,7 @@ export class EquipmentService {
    */
   public async updateEquipment(id: string, updates: Partial<Equipment>): Promise<void> {
     if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const equipmentRef = ref(database, `users/${this.userId}/equipment/${id}`);
-    const snapshot = await get(equipmentRef);
-    
-    if (!snapshot.exists()) {
-      throw new Error(`Equipment with ID ${id} not found`);
-    }
-    
-    await update(equipmentRef, {
-      ...updates,
-      updatedAt: Date.now()
-    });
+    await this.equipmentRepository.update(id, updates, this.userId);
   }
 
   /**
@@ -121,117 +72,20 @@ export class EquipmentService {
    */
   public async deleteEquipment(id: string): Promise<void> {
     if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const equipmentRef = ref(database, `users/${this.userId}/equipment/${id}`);
-    await set(equipmentRef, null);
+    await this.equipmentRepository.delete(id, this.userId);
   }
 
   /**
    * Get available equipment of a specific type
    */
-  public async getAvailableEquipment(type: Equipment['type'], minCapacity: number): Promise<Equipment[]> {
+  public async getAvailableEquipment(type: EquipmentType, minCapacity: number): Promise<Equipment[]> {
     if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const equipmentRef = ref(database, `users/${this.userId}/equipment`);
-    const typeQuery = query(
-      equipmentRef,
-      orderByChild('type'),
-      equalTo(type)
+    const allEquipment = await this.equipmentRepository.getAll(this.userId);
+    return allEquipment.filter(equipment => 
+      equipment.metadata.type === type && 
+      equipment.metadata.capacity >= minCapacity &&
+      equipment.status.current === EquipmentStatus.AVAILABLE
     );
-    
-    const snapshot = await get(typeQuery);
-    if (!snapshot.exists()) return [];
-    
-    return Object.entries(snapshot.val())
-      .map(([id, data]) => ({
-        id,
-        name: (data as any).name,
-        type: (data as any).type,
-        capacity: (data as any).capacity,
-        status: (data as any).status,
-        notes: (data as any).notes,
-        createdAt: (data as any).createdAt,
-        updatedAt: (data as any).updatedAt
-      }))
-      .filter(eq => 
-        eq.status === 'AVAILABLE' && 
-        eq.capacity >= minCapacity
-      );
-  }
-
-  /**
-   * Get equipment schedule
-   */
-  public async getEquipmentSchedule(
-    equipmentId: string,
-    startDate: number,
-    endDate: number
-  ): Promise<EquipmentSchedule[]> {
-    if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const scheduleRef = ref(database, `users/${this.userId}/equipment/${equipmentId}/schedule`);
-    const scheduleQuery = query(
-      scheduleRef,
-      orderByChild('startTime'),
-      equalTo(startDate)
-    );
-    
-    const snapshot = await get(scheduleQuery);
-    if (!snapshot.exists()) return [];
-    
-    return Object.entries(snapshot.val())
-      .map(([id, data]) => ({
-        id,
-        equipmentId: (data as any).equipmentId,
-        startTime: (data as any).startTime,
-        endTime: (data as any).endTime,
-        batchId: (data as any).batchId,
-        status: (data as any).status,
-        notes: (data as any).notes,
-        createdAt: (data as any).createdAt,
-        updatedAt: (data as any).updatedAt
-      }))
-      .filter(schedule => 
-        schedule.startTime >= startDate && 
-        schedule.endTime <= endDate
-      );
-  }
-
-  /**
-   * Schedule equipment usage
-   */
-  public async scheduleEquipment(
-    equipmentId: string,
-    schedule: Omit<EquipmentSchedule, 'id'>
-  ): Promise<EquipmentSchedule> {
-    if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const scheduleRef = ref(database, `users/${this.userId}/equipment/${equipmentId}/schedule`);
-    const newScheduleRef = push(scheduleRef);
-    
-    const newSchedule: EquipmentSchedule = {
-      ...schedule,
-      id: newScheduleRef.key!
-    };
-    
-    await set(newScheduleRef, newSchedule);
-    return newSchedule;
-  }
-
-  /**
-   * Update equipment status
-   */
-  public async updateEquipmentStatus(
-    equipmentId: string,
-    status: Equipment['status']
-  ): Promise<void> {
-    if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const equipmentRef = ref(database, `users/${this.userId}/equipment/${equipmentId}`);
-    await update(equipmentRef, {
-      status,
-      updatedAt: Date.now()
-    });
   }
 
   /**
@@ -239,46 +93,15 @@ export class EquipmentService {
    */
   public async getContainers(): Promise<Container[]> {
     if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const containersRef = ref(database, `users/${this.userId}/containers`);
-    const snapshot = await get(containersRef);
-    
-    if (!snapshot.exists()) return [];
-    
-    return Object.entries(snapshot.val()).map(([id, data]) => ({
-      id,
-      name: (data as any).name,
-      type: (data as any).type,
-      capacity: (data as any).capacity,
-      status: (data as any).status,
-      currentBatchId: (data as any).currentBatchId,
-      notes: (data as any).notes,
-      fillDate: (data as any).fillDate,
-      emptyDate: (data as any).emptyDate,
-      createdAt: (data as any).createdAt,
-      updatedAt: (data as any).updatedAt
-    }));
+    return this.containerRepository.getAll(this.userId);
   }
 
   /**
    * Add new container
    */
-  public async addContainer(container: Omit<Container, 'id' | 'createdAt' | 'updatedAt'>): Promise<Container> {
+  public async addContainer(container: Omit<Container, 'id'>): Promise<Container> {
     if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const containersRef = ref(database, `users/${this.userId}/containers`);
-    const newContainerRef = push(containersRef);
-    
-    const now = Date.now();
-    const newContainer: Container = {
-      ...container,
-      id: newContainerRef.key!,
-      createdAt: now,
-      updatedAt: now
-    };
-    
-    await set(newContainerRef, newContainer);
-    return newContainer;
+    return this.containerRepository.create(container, this.userId);
   }
 
   /**
@@ -286,42 +109,27 @@ export class EquipmentService {
    */
   public async updateContainerStatus(
     containerId: string,
-    status: Container['status'],
+    status: ContainerStatus,
     batchId?: string
   ): Promise<void> {
     if (!this.userId) throw new Error('EquipmentService not initialized');
-    
-    const containerRef = ref(database, `users/${this.userId}/containers/${containerId}`);
-    const updates: Partial<Container> = {
-      status,
-      updatedAt: Date.now()
-    };
-    
-    if (status === 'FILLED' && batchId) {
-      updates.currentBatchId = batchId;
-      updates.fillDate = Date.now();
-    } else if (status === 'EMPTY') {
-      updates.currentBatchId = undefined;
-      updates.emptyDate = Date.now();
-    }
-    
-    await update(containerRef, updates);
+    await this.containerRepository.updateStatus(containerId, status, batchId);
   }
 
   /**
-   * Clear all equipment and container data
+   * Clear all equipment data
    */
   public async clearAllData(): Promise<void> {
     if (!this.userId) {
       throw new Error('EquipmentService not initialized');
     }
     
-    const equipmentRef = ref(database, `users/${this.userId}/equipment`);
-    const containersRef = ref(database, `users/${this.userId}/containers`);
+    const equipment = await this.equipmentRepository.getAll(this.userId);
+    const containers = await this.containerRepository.getAll(this.userId);
     
     await Promise.all([
-      set(equipmentRef, {}),
-      set(containersRef, {})
+      ...equipment.map(eq => this.equipmentRepository.delete(eq.id, this.userId!)),
+      ...containers.map(container => this.containerRepository.delete(container.id, this.userId!))
     ]);
   }
 
@@ -330,10 +138,10 @@ export class EquipmentService {
       throw new Error('EquipmentService not initialized');
     }
 
-    const equipmentTypes = ['FERMENTER', 'BOTTLING', 'OTHER'] as const;
-    const equipmentStatuses = ['AVAILABLE', 'IN_USE', 'MAINTENANCE'] as const;
-    const containerTypes = ['BOTTLE', 'JAR', 'OTHER'] as const;
-    const containerStatuses = ['EMPTY', 'FILLED', 'CLEANING'] as const;
+    const equipmentTypes = Object.values(EquipmentType);
+    const equipmentStatuses = Object.values(EquipmentStatus);
+    const containerTypes = Object.values(ContainerType);
+    const containerStatuses = Object.values(ContainerStatus);
 
     const generateRandomDate = (daysAgo: number) => {
       return new Date(Date.now() - Math.random() * daysAgo * 24 * 60 * 60 * 1000).toISOString();
@@ -342,32 +150,57 @@ export class EquipmentService {
     const sampleEquipment = Array.from({ length: 8 }, (_, index) => {
       const type = equipmentTypes[Math.floor(Math.random() * equipmentTypes.length)];
       const status = equipmentStatuses[Math.floor(Math.random() * equipmentStatuses.length)];
-      const capacity = type === 'FERMENTER' ? 5 : 
-                      type === 'BOTTLING' ? 20 : 
+      const capacity = type === EquipmentType.FERMENTER ? 5 : 
+                      type === EquipmentType.KEG ? 5 :
+                      type === EquipmentType.BOTTLE ? 0.5 :
                       Math.floor(Math.random() * 10) + 1;
 
       return {
-        name: `${type.charAt(0) + type.slice(1).toLowerCase()} ${index + 1}`,
-        type,
-        capacity,
-        status,
-        notes: `Sample ${type.toLowerCase()} equipment ${index + 1}`
+        metadata: {
+          name: `${type.charAt(0).toUpperCase() + type.slice(1)} ${index + 1}`,
+          type,
+          capacity,
+          description: `Sample ${type} equipment ${index + 1}`,
+          createdBy: this.userId!,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        },
+        status: {
+          current: status,
+          lastUpdated: Date.now(),
+          currentBatchId: null
+        },
+        maintenance: {
+          lastCleaned: null,
+          lastMaintained: null,
+          nextMaintenance: null,
+          notes: 'New equipment'
+        }
       };
     });
 
     const sampleContainers = Array.from({ length: 12 }, (_, index) => {
       const type = containerTypes[Math.floor(Math.random() * containerTypes.length)];
       const status = containerStatuses[Math.floor(Math.random() * containerStatuses.length)];
-      const capacity = type === 'BOTTLE' ? 0.5 : 
-                      type === 'JAR' ? 1 : 
-                      0.5;
+      const capacity = type === ContainerType.BOTTLE ? 0.5 : 5;
 
       return {
-        name: `${type.charAt(0) + type.slice(1).toLowerCase()} Set ${index + 1}`,
-        type,
-        capacity,
-        status,
-        notes: `Sample ${type.toLowerCase()} container set ${index + 1}`
+        metadata: {
+          name: `${type.charAt(0).toUpperCase() + type.slice(1)} Set ${index + 1}`,
+          type,
+          capacity,
+          description: `Sample ${type} container set ${index + 1}`,
+          createdBy: this.userId!,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        },
+        status: {
+          current: status,
+          lastUpdated: Date.now(),
+          currentBatchId: null,
+          fillDate: status === ContainerStatus.FILLED ? Date.now() : null,
+          emptyDate: status === ContainerStatus.EMPTY ? Date.now() : null
+        }
       };
     });
 

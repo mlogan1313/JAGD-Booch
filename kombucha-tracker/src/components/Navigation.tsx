@@ -2,7 +2,7 @@
  * Navigation Component
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../services/auth';
 import { AuthService } from '../services/auth';
@@ -11,6 +11,17 @@ export const Navigation: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const authService = AuthService.getInstance();
+  const [userRole, setUserRole] = useState<'admin' | 'brewer' | 'viewer' | null>(null);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (user) {
+        const role = await authService.getUserRole();
+        setUserRole(role);
+      }
+    };
+    fetchUserRole();
+  }, [user]);
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -69,12 +80,20 @@ export const Navigation: React.FC = () => {
           </div>
           <div className="flex items-center">
             {user ? (
-              <button
-                onClick={handleSignOut}
-                className="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
-              >
-                Sign Out
-              </button>
+              <div className="flex items-center space-x-4">
+                <div className="text-sm text-gray-700 flex flex-col items-end">
+                  <span className="font-medium">{user.displayName || user.email}</span>
+                  <span className="text-xs text-gray-500">
+                    {userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : 'Loading...'}
+                  </span>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                >
+                  Sign Out
+                </button>
+              </div>
             ) : (
               <Link
                 to="/auth"

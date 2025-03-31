@@ -1,13 +1,8 @@
 import { BaseRepository } from './baseRepository';
-import { 
-  Container, 
-  ContainerSchema,
-  ContainerStatusSchema
-} from '../schemas/batch';
+import { Container, ContainerSchema, ContainerStatusEnum } from '../schemas/container';
 import { ref, get, set, update } from 'firebase/database';
 import { database } from '../services/firebase';
-
-type ContainerStatus = 'empty' | 'filled' | 'cleaning';
+import { z } from 'zod';
 
 export class ContainerRepository extends BaseRepository<Container, typeof ContainerSchema> {
   constructor() {
@@ -16,7 +11,7 @@ export class ContainerRepository extends BaseRepository<Container, typeof Contai
 
   async updateStatus(
     containerId: string,
-    status: ContainerStatus,
+    status: z.infer<typeof ContainerStatusEnum>,
     currentBatchId: string | null = null
   ): Promise<void> {
     const containerRef = ref(database, `containers/${containerId}`);
@@ -30,9 +25,7 @@ export class ContainerRepository extends BaseRepository<Container, typeof Contai
       const updatedStatus = {
         current: status,
         lastUpdated: Date.now(),
-        currentBatchId,
-        fillDate: status === 'filled' ? Date.now() : null,
-        emptyDate: status === 'empty' ? Date.now() : null
+        currentBatchId
       };
       await update(containerRef, { status: updatedStatus });
     } catch (error) {
@@ -41,60 +34,34 @@ export class ContainerRepository extends BaseRepository<Container, typeof Contai
     }
   }
 
-  async getEmptyContainers(): Promise<Container[]> {
-    const containerRef = ref(database, 'containers');
-    const snapshot = await get(containerRef);
+  async getContainersByStatus(status: z.infer<typeof ContainerStatusEnum>): Promise<Container[]> {
+    const containersRef = ref(database, 'containers');
+    const snapshot = await get(containersRef);
     if (!snapshot.exists()) return [];
 
     const containers: Container[] = [];
     snapshot.forEach((childSnapshot) => {
       try {
-        const containerData = childSnapshot.val();
-        if (containerData.status.current === 'empty') {
-          containers.push(ContainerSchema.parse(containerData));
+        const containerData = ContainerSchema.parse(childSnapshot.val());
+        if (containerData.status.current === status) {
+          containers.push(containerData);
         }
       } catch (error) {
-        console.error(`Validation error for container:`, error);
+        console.error(`Validation error parsing container: ${childSnapshot.key}`, error);
       }
     });
     return containers;
+  }
+
+  async getEmptyContainers(): Promise<Container[]> {
+    return this.getContainersByStatus(ContainerStatusEnum.Enum.EMPTY);
   }
 
   async getFilledContainers(): Promise<Container[]> {
-    const containerRef = ref(database, 'containers');
-    const snapshot = await get(containerRef);
-    if (!snapshot.exists()) return [];
-
-    const containers: Container[] = [];
-    snapshot.forEach((childSnapshot) => {
-      try {
-        const containerData = childSnapshot.val();
-        if (containerData.status.current === 'filled') {
-          containers.push(ContainerSchema.parse(containerData));
-        }
-      } catch (error) {
-        console.error(`Validation error for container:`, error);
-      }
-    });
-    return containers;
+    return this.getContainersByStatus(ContainerStatusEnum.Enum.FILLED);
   }
 
-  async getContainersByBatch(batchId: string): Promise<Container[]> {
-    const containerRef = ref(database, 'containers');
-    const snapshot = await get(containerRef);
-    if (!snapshot.exists()) return [];
-
-    const containers: Container[] = [];
-    snapshot.forEach((childSnapshot) => {
-      try {
-        const containerData = childSnapshot.val();
-        if (containerData.status.currentBatchId === batchId) {
-          containers.push(ContainerSchema.parse(containerData));
-        }
-      } catch (error) {
-        console.error(`Validation error for container:`, error);
-      }
-    });
-    return containers;
+  async getDirtyContainers(): Promise<Container[]> {
+    return this.getContainersByStatus(ContainerStatusEnum.Enum.DIRTY);
   }
 } 
