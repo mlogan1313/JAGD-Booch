@@ -25,21 +25,25 @@
 
 ### Before Starting Work
 1. Review PROJECT_OVERVIEW.md
-2. Identify current priorities
-3. Create a task checklist for the current work
-4. Update PROJECT_OVERVIEW.md if needed
+2. Review USER_STORIES.md for relevant requirements
+3. Identify current priorities
+4. Create a task checklist for the current work
+5. Update PROJECT_OVERVIEW.md if needed
 
 ### During Development
 1. Follow TypeScript best practices
 2. Write clean, maintainable code
 3. Test changes locally
 4. Keep commits focused and descriptive
+5. Never add redundant Router components - use only one Router at the app root
+6. Consult USER_STORIES.md when solving problems or adding features
 
 ### After Changes
 1. Update PROJECT_OVERVIEW.md
-2. Update any relevant documentation
-3. Test the changes
-4. Create a descriptive commit message
+2. Update USER_STORIES.md if new requirements are identified
+3. Update any relevant documentation
+4. Test the changes
+5. Create a descriptive commit message
 
 ## 🧪 Testing Requirements
 

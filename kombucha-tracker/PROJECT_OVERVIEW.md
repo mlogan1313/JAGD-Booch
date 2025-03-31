@@ -30,6 +30,9 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - [ ] Set up offline-first functionality
 - [x] Create data utilities
 - [x] Implement real-time sync
+- [x] Implement batch code system
+- [x] Set up equipment tracking
+- [x] Implement container management
 
 ### Core Features
 - [x] Authentication flow (Firebase)
@@ -39,6 +42,10 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - [x] Checklist component
 - [ ] Log entry interface
 - [ ] Timeline guidance
+- [x] Equipment management
+- [ ] Batch transfer interface
+- [ ] Quality control tracking
+- [ ] Recall management
 
 ### Polish & Optimization
 - [x] Mobile responsiveness
@@ -46,6 +53,9 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - [ ] Data export/import
 - [x] Error handling
 - [x] Loading states
+- [ ] Batch lineage visualization
+- [ ] Quality control reports
+- [ ] Recall tracking system
 
 ---
 
@@ -59,6 +69,12 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - **Deployment**: GitHub Pages
 - **Daily Dashboard**: Lists active batches with day count and stage
 - **Checklist View**: Per-batch interactive tasks for each phase
+- **Equipment Management**: 
+  - Track kettles, fermenters, and containers
+  - Equipment scheduling and availability
+  - Maintenance and cleaning tracking
+  - Container status management
+- **Batch Tracking**: Complete lineage from 1F to retail
 
 ---
 
@@ -74,6 +90,10 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - [x] Cross-device sync via Firebase
 - [ ] Offline support with Firebase persistence
 - [ ] Export to CSV or JSON format
+- [x] Batch code system
+- [x] Equipment tracking
+- [ ] Quality control logging
+- [ ] Basic recall management
 
 ---
 
@@ -85,16 +105,25 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - [ ] Add a **batch timeline engine** based on fermentation start date
 - [ ] Implement **batch creation/editing**
 - [ ] Implement offline-first functionality with Firebase sync
+- [x] Create equipment management interface
+- [ ] Implement batch transfer system
+- [ ] Add quality control tracking
+- [ ] Set up recall management
 
 ---
 
 ## 🧪 Long-Term Goals
 
-- Full fermentation lifecycle tracking (1F → 2F → Kegging)
+- Full fermentation lifecycle tracking (1F → 2F → Kegging/Bottling)
 - Sensor integration down the line (pH/temp, optional)
 - Mobile PWA support
 - CSV/Markdown export
 - Advanced flavor analysis + scaling plans
+- Advanced quality control analytics
+- Automated batch code generation
+- Equipment maintenance scheduling
+- Retail distribution tracking
+- Customer feedback integration
 
 ---
 
@@ -106,6 +135,8 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - Manual logging is preferred initially, with eventual sensor automation (e.g. pH/temp probes or BrewPi-like integrations)
 - Cross-device access is essential: desktop for full management, mobile for brewery operations
 - Single-user application with data stored in Firebase
+- Complete traceability from 1F to retail
+- Quality control and recall management capabilities
 
 ---
 
@@ -118,22 +149,34 @@ kombucha-tracker/
 │   │   ├── ProtectedRoute.tsx
 │   │   ├── BatchCard.tsx
 │   │   ├── Checklist.tsx
-│   │   └── LogForm.tsx
+│   │   ├── LogForm.tsx
+│   │   ├── EquipmentList.tsx
+│   │   ├── ContainerList.tsx
+│   │   ├── AddEquipmentForm.tsx
+│   │   ├── AddContainerForm.tsx
+│   │   └── Navigation.tsx
 │   ├── pages/
 │   │   ├── index.tsx  (Dashboard)
 │   │   ├── auth/
 │   │   │   ├── index.tsx
 │   │   │   └── callback.tsx
-│   │   └── batch/[id].tsx (Batch detail view)
+│   │   ├── batch/[id].tsx (Batch detail view)
+│   │   └── equipment/index.tsx (Equipment management)
 │   ├── services/
 │   │   ├── firebase.ts
-│   │   └── auth.ts
+│   │   ├── auth.ts
+│   │   ├── batchService.ts
+│   │   └── equipmentService.ts
 │   ├── stores/
-│   │   └── batchStore.ts
+│   │   ├── batchStore.ts
+│   │   └── equipmentStore.ts
 │   ├── utils/
-│   │   └── batchHelpers.ts
+│   │   ├── batchHelpers.ts
+│   │   └── batchCodeGenerator.ts
 │   └── types/
-│       └── batch.ts
+│       ├── batch.ts
+│       ├── equipment.ts
+│       └── quality.ts
 ├── public/
 └── package.json
 ```

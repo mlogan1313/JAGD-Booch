@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useBatchStore } from '../stores/batchStore';
 import { BatchCard } from '../components/BatchCard';
 import { ProtectedRoute } from '../components/ProtectedRoute';
-import { Batch, FermentationStage } from '../types/batch';
+import { CreateBatchForm } from '../components/CreateBatchForm';
+import { Batch } from '../types/batch';
 
 const Dashboard: React.FC = () => {
   const { batches, isLoading, error, fetchBatches, createBatch } = useBatchStore();
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   React.useEffect(() => {
     fetchBatches();
@@ -135,7 +137,7 @@ const Dashboard: React.FC = () => {
               Add Sample Data
             </button>
             <button
-              onClick={() => {/* TODO: Implement batch creation */}}
+              onClick={() => setShowCreateForm(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
               New Batch
@@ -156,6 +158,10 @@ const Dashboard: React.FC = () => {
               <BatchCard key={batch.id} batch={batch} />
             ))}
           </div>
+        )}
+
+        {showCreateForm && (
+          <CreateBatchForm onClose={() => setShowCreateForm(false)} />
         )}
       </div>
     </div>

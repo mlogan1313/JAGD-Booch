@@ -2,7 +2,9 @@ import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User 
 import { create } from 'zustand';
 import { auth } from './firebase';
 import { BatchService } from './batchService';
+import { EquipmentService } from './equipmentService';
 import { useBatchStore } from '../stores/batchStore';
+import { useEquipmentStore } from '../stores/equipmentStore';
 
 interface AuthState {
   user: User | null;
@@ -28,11 +30,16 @@ onAuthStateChanged(auth, (user) => {
       error: null,
     });
 
-    // Initialize batch service
+    // Initialize services
     const batchService = BatchService.getInstance();
     batchService.setUserId(user.uid);
     useBatchStore.getState().setBatchService(batchService);
     useBatchStore.getState().fetchBatches();
+
+    const equipmentService = EquipmentService.getInstance();
+    equipmentService.initialize(user.uid);
+    useEquipmentStore.getState().fetchEquipment();
+    useEquipmentStore.getState().fetchContainers();
   } else {
     useAuth.setState({
       user: null,
@@ -41,11 +48,16 @@ onAuthStateChanged(auth, (user) => {
       error: null,
     });
 
-    // Clear batch service
+    // Clear services
     const batchService = BatchService.getInstance();
     batchService.setUserId('');
     useBatchStore.getState().setBatchService(null);
     useBatchStore.getState().batches = [];
+
+    const equipmentService = EquipmentService.getInstance();
+    equipmentService.initialize('');
+    useEquipmentStore.getState().equipment = [];
+    useEquipmentStore.getState().containers = [];
   }
 });
 
