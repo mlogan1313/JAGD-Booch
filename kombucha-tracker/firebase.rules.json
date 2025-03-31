@@ -1,0 +1,151 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+        "batches": {
+          "$batchId": {
+            ".read": "auth != null && auth.uid == $uid",
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.hasChildren(['name', 'stage', 'batchCode', 'batchNumber', 'batchDate', 'batchType', 'volume', 'teaType', 'sugarAmount', 'starterAmount'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0"
+            },
+            "stage": {
+              ".validate": "newData.isString() && (newData.val() == '1F' || newData.val() == '2F' || newData.val() == 'KEGGED' || newData.val() == 'BOTTLED' || newData.val() == 'COMPLETED')"
+            },
+            "batchCode": {
+              ".validate": "newData.hasChildren(['code', 'childCodes', 'lineage'])",
+              "code": {
+                ".validate": "newData.isString()"
+              },
+              "childCodes": {
+                ".validate": "newData.isArray()"
+              },
+              "lineage": {
+                ".validate": "newData.isArray()"
+              }
+            },
+            "batchNumber": {
+              ".validate": "newData.isNumber()"
+            },
+            "batchDate": {
+              ".validate": "newData.isNumber()"
+            },
+            "batchType": {
+              ".validate": "newData.isString() && (newData.val() == '1F' || newData.val() == '2F' || newData.val() == 'KEG' || newData.val() == 'BOTTLE')"
+            },
+            "volume": {
+              ".validate": "newData.isNumber()"
+            },
+            "teaType": {
+              ".validate": "newData.isString()"
+            },
+            "sugarAmount": {
+              ".validate": "newData.isNumber()"
+            },
+            "starterAmount": {
+              ".validate": "newData.isNumber()"
+            },
+            "stageHistory": {
+              ".validate": "newData.isArray()",
+              "$index": {
+                ".validate": "newData.hasChildren(['stage', 'startTime', 'equipmentId'])",
+                "stage": {
+                  ".validate": "newData.isString()"
+                },
+                "startTime": {
+                  ".validate": "newData.isNumber()"
+                },
+                "equipmentId": {
+                  ".validate": "newData.isString()"
+                }
+              }
+            },
+            "equipmentHistory": {
+              ".validate": "newData.isArray()",
+              "$index": {
+                ".validate": "newData.hasChildren(['equipmentId', 'startTime'])",
+                "equipmentId": {
+                  ".validate": "newData.isString()"
+                },
+                "startTime": {
+                  ".validate": "newData.isNumber()"
+                }
+              }
+            },
+            "measurements": {
+              ".validate": "newData.hasChildren(['ph', 'temperature'])",
+              "ph": {
+                ".validate": "newData.isArray()",
+                "$index": {
+                  ".validate": "newData.hasChildren(['timestamp', 'value'])",
+                  "timestamp": {
+                    ".validate": "newData.isNumber()"
+                  },
+                  "value": {
+                    ".validate": "newData.isNumber()"
+                  }
+                }
+              },
+              "temperature": {
+                ".validate": "newData.isArray()",
+                "$index": {
+                  ".validate": "newData.hasChildren(['timestamp', 'value'])",
+                  "timestamp": {
+                    ".validate": "newData.isNumber()"
+                  },
+                  "value": {
+                    ".validate": "newData.isNumber()"
+                  }
+                }
+              }
+            },
+            "checklists": {
+              ".validate": "newData.isArray()"
+            },
+            "childBatchIds": {
+              ".validate": "newData.isArray()"
+            },
+            "splitPortions": {
+              ".validate": "newData.isArray()"
+            },
+            "currentEquipmentId": {
+              ".validate": "newData.isString()"
+            },
+            "description": {
+              ".validate": "!newData.exists() || newData.isString()"
+            },
+            "notes": {
+              ".validate": "!newData.exists() || newData.isString()"
+            },
+            "finishingDetails": {
+              ".validate": "!newData.exists() || (newData.hasChildren(['type', 'containerIds', 'date', 'volume']) && newData.child('type').val() == 'BOTTLE')",
+              "type": {
+                ".validate": "newData.isString() && newData.val() == 'BOTTLE'"
+              },
+              "containerIds": {
+                ".validate": "newData.isArray()"
+              },
+              "date": {
+                ".validate": "newData.isNumber()"
+              },
+              "volume": {
+                ".validate": "newData.isNumber()"
+              }
+            }
+          }
+        },
+        "equipment": {
+          ".read": "auth != null && auth.uid == $uid",
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "containers": {
+          ".read": "auth != null && auth.uid == $uid",
+          ".write": "auth != null && auth.uid == $uid"
+        }
+      }
+    }
+  }
+} 

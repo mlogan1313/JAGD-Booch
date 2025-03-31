@@ -46,6 +46,11 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - [ ] Batch transfer interface
 - [ ] Quality control tracking
 - [ ] Recall management
+- [ ] Admin user management
+  - [ ] User CRUD operations
+  - [ ] Role-based access control
+  - [ ] User activity monitoring
+  - [ ] User access restrictions
 
 ### Polish & Optimization
 - [x] Mobile responsiveness
@@ -109,6 +114,11 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - [ ] Implement batch transfer system
 - [ ] Add quality control tracking
 - [ ] Set up recall management
+- [ ] Implement admin user management system
+  - [ ] Set up user roles and permissions
+  - [ ] Create user management interface
+  - [ ] Implement user activity tracking
+  - [ ] Configure access control rules
 
 ---
 
@@ -137,6 +147,12 @@ Build a professional-grade web app for tracking daily kombucha production, using
 - Single-user application with data stored in Firebase
 - Complete traceability from 1F to retail
 - Quality control and recall management capabilities
+- Role-based access control needed for:
+  - System administrators (full access)
+  - Brewers (standard operations)
+  - Quality control (read-only quality data)
+  - Inventory management (read-only inventory)
+  - Public access (limited data)
 
 ---
 

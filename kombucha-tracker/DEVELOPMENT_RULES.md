@@ -101,6 +101,36 @@
 - [ ] Clean up branches after merge
 - [ ] Regular commits
 
+## 🎯 Separation of Concerns
+
+### Service Layer
+- [ ] Each service should have a single responsibility
+- [ ] Services should not directly depend on other services unless absolutely necessary
+- [ ] Use dependency injection or service locator pattern for service dependencies
+- [ ] Keep service methods focused and atomic
+- [ ] Document service boundaries and responsibilities
+
+### Data Layer
+- [ ] Separate data access logic from business logic
+- [ ] Use repositories or data access objects (DAOs) for database operations
+- [ ] Keep database queries and data transformations isolated
+- [ ] Implement proper data validation at the data layer
+- [ ] Use type-safe interfaces for data structures
+
+### UI Layer
+- [ ] Keep components focused on presentation
+- [ ] Move business logic to appropriate services
+- [ ] Use container/presenter pattern for complex components
+- [ ] Keep state management separate from UI components
+- [ ] Implement proper prop drilling prevention
+
+### Cross-Cutting Concerns
+- [ ] Handle authentication/authorization separately
+- [ ] Implement logging and error handling consistently
+- [ ] Keep configuration management isolated
+- [ ] Handle side effects in dedicated services
+- [ ] Use middleware for cross-cutting functionality
+
 ## 📦 Dependencies
 
 ### Package Management

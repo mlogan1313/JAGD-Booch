@@ -1,10 +1,12 @@
-import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User, signInWithEmailAndPassword } from 'firebase/auth';
 import { create } from 'zustand';
-import { auth } from './firebase';
+import { auth, database } from './firebase';
+import { ref, get, set } from 'firebase/database';
 import { BatchService } from './batchService';
 import { EquipmentService } from './equipmentService';
 import { useBatchStore } from '../stores/batchStore';
 import { useEquipmentStore } from '../stores/equipmentStore';
+import { UserService } from './userService';
 
 interface AuthState {
   user: User | null;
@@ -21,25 +23,53 @@ export const useAuth = create<AuthState>((set) => ({
 }));
 
 // Initialize auth state
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (user) {
-    useAuth.setState({
-      user,
-      isAuthenticated: true,
-      isLoading: false,
-      error: null,
-    });
+    try {
+      // Check if user structure exists
+      const userRef = ref(database, `users/${user.uid}`);
+      const userSnapshot = await get(userRef);
+      
+      if (!userSnapshot.exists()) {
+        console.log('Creating user structure for:', user.uid);
+        // Create user structure if it doesn't exist
+        await set(userRef, {
+          batches: {},
+          equipment: {},
+          containers: {},
+          createdAt: Date.now(),
+          lastLogin: Date.now(),
+          role: 'brewer' // Default role
+        });
+      } else {
+        // Update last login time
+        await set(ref(database, `users/${user.uid}/lastLogin`), Date.now());
+      }
 
-    // Initialize services
-    const batchService = BatchService.getInstance();
-    batchService.setUserId(user.uid);
-    useBatchStore.getState().setBatchService(batchService);
-    useBatchStore.getState().fetchBatches();
+      useAuth.setState({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
 
-    const equipmentService = EquipmentService.getInstance();
-    equipmentService.initialize(user.uid);
-    useEquipmentStore.getState().fetchEquipment();
-    useEquipmentStore.getState().fetchContainers();
+      // Initialize services
+      const batchService = BatchService.getInstance();
+      batchService.setUserId(user.uid);
+      useBatchStore.getState().setBatchService(batchService);
+      useBatchStore.getState().fetchBatches();
+
+      const equipmentService = EquipmentService.getInstance();
+      equipmentService.initialize(user.uid);
+      useEquipmentStore.getState().fetchEquipment();
+      useEquipmentStore.getState().fetchContainers();
+    } catch (error) {
+      console.error('Error initializing user:', error);
+      useAuth.setState({
+        error: 'Failed to initialize user data',
+        isLoading: false
+      });
+    }
   } else {
     useAuth.setState({
       user: null,
@@ -63,8 +93,12 @@ onAuthStateChanged(auth, (user) => {
 
 export class AuthService {
   private static instance: AuthService;
+  private userService: UserService;
 
-  private constructor() {}
+  private constructor() {
+    this.userService = UserService.getInstance();
+    this.setupAuthStateListener();
+  }
 
   static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -73,34 +107,31 @@ export class AuthService {
     return AuthService.instance;
   }
 
-  async signInWithGoogle(): Promise<void> {
-    try {
-      useAuth.setState({ isLoading: true, error: null });
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error('Google sign in error:', error);
-      useAuth.setState({ error: 'Failed to sign in with Google' });
-      throw error;
-    } finally {
-      useAuth.setState({ isLoading: false });
-    }
+  private setupAuthStateListener() {
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        this.userService.setUserId(user.uid);
+        await this.userService.createUserIfNotExists();
+      } else {
+        this.userService.setUserId('');
+      }
+    });
+  }
+
+  async signIn(email: string, password: string): Promise<User> {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
   }
 
   async signOut(): Promise<void> {
-    try {
-      useAuth.setState({ isLoading: true, error: null });
-      await signOut(auth);
-    } catch (error) {
-      console.error('Sign out error:', error);
-      useAuth.setState({ error: 'Failed to sign out' });
-      throw error;
-    } finally {
-      useAuth.setState({ isLoading: false });
-    }
+    await signOut(auth);
   }
 
-  getCurrentUser() {
+  getCurrentUser(): User | null {
     return auth.currentUser;
+  }
+
+  async getUserRole(): Promise<'admin' | 'brewer' | 'viewer' | null> {
+    return this.userService.getUserRole();
   }
 } 

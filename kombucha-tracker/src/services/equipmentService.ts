@@ -42,8 +42,14 @@ export class EquipmentService {
     
     return Object.entries(snapshot.val()).map(([id, data]) => ({
       id,
-      ...data
-    } as Equipment));
+      name: (data as any).name,
+      type: (data as any).type,
+      capacity: (data as any).capacity,
+      status: (data as any).status,
+      notes: (data as any).notes,
+      createdAt: (data as any).createdAt,
+      updatedAt: (data as any).updatedAt
+    }));
   }
 
   /**
@@ -57,10 +63,17 @@ export class EquipmentService {
     
     if (!snapshot.exists()) return null;
     
+    const data = snapshot.val() as any;
     return {
       id,
-      ...snapshot.val()
-    } as Equipment;
+      name: data.name,
+      type: data.type,
+      capacity: data.capacity,
+      status: data.status,
+      notes: data.notes,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt
+    };
   }
 
   /**
@@ -132,8 +145,14 @@ export class EquipmentService {
     return Object.entries(snapshot.val())
       .map(([id, data]) => ({
         id,
-        ...data
-      } as Equipment))
+        name: (data as any).name,
+        type: (data as any).type,
+        capacity: (data as any).capacity,
+        status: (data as any).status,
+        notes: (data as any).notes,
+        createdAt: (data as any).createdAt,
+        updatedAt: (data as any).updatedAt
+      }))
       .filter(eq => 
         eq.status === 'AVAILABLE' && 
         eq.capacity >= minCapacity
@@ -163,8 +182,15 @@ export class EquipmentService {
     return Object.entries(snapshot.val())
       .map(([id, data]) => ({
         id,
-        ...data
-      } as EquipmentSchedule))
+        equipmentId: (data as any).equipmentId,
+        startTime: (data as any).startTime,
+        endTime: (data as any).endTime,
+        batchId: (data as any).batchId,
+        status: (data as any).status,
+        notes: (data as any).notes,
+        createdAt: (data as any).createdAt,
+        updatedAt: (data as any).updatedAt
+      }))
       .filter(schedule => 
         schedule.startTime >= startDate && 
         schedule.endTime <= endDate
@@ -221,8 +247,17 @@ export class EquipmentService {
     
     return Object.entries(snapshot.val()).map(([id, data]) => ({
       id,
-      ...data
-    } as Container));
+      name: (data as any).name,
+      type: (data as any).type,
+      capacity: (data as any).capacity,
+      status: (data as any).status,
+      currentBatchId: (data as any).currentBatchId,
+      notes: (data as any).notes,
+      fillDate: (data as any).fillDate,
+      emptyDate: (data as any).emptyDate,
+      createdAt: (data as any).createdAt,
+      updatedAt: (data as any).updatedAt
+    }));
   }
 
   /**
@@ -271,5 +306,77 @@ export class EquipmentService {
     }
     
     await update(containerRef, updates);
+  }
+
+  /**
+   * Clear all equipment and container data
+   */
+  public async clearAllData(): Promise<void> {
+    if (!this.userId) {
+      throw new Error('EquipmentService not initialized');
+    }
+    
+    const equipmentRef = ref(database, `users/${this.userId}/equipment`);
+    const containersRef = ref(database, `users/${this.userId}/containers`);
+    
+    await Promise.all([
+      set(equipmentRef, {}),
+      set(containersRef, {})
+    ]);
+  }
+
+  async seedSampleData(userId: string): Promise<void> {
+    if (!this.userId) {
+      throw new Error('EquipmentService not initialized');
+    }
+
+    const equipmentTypes = ['FERMENTER', 'BOTTLING', 'OTHER'] as const;
+    const equipmentStatuses = ['AVAILABLE', 'IN_USE', 'MAINTENANCE'] as const;
+    const containerTypes = ['BOTTLE', 'JAR', 'OTHER'] as const;
+    const containerStatuses = ['EMPTY', 'FILLED', 'CLEANING'] as const;
+
+    const generateRandomDate = (daysAgo: number) => {
+      return new Date(Date.now() - Math.random() * daysAgo * 24 * 60 * 60 * 1000).toISOString();
+    };
+
+    const sampleEquipment = Array.from({ length: 8 }, (_, index) => {
+      const type = equipmentTypes[Math.floor(Math.random() * equipmentTypes.length)];
+      const status = equipmentStatuses[Math.floor(Math.random() * equipmentStatuses.length)];
+      const capacity = type === 'FERMENTER' ? 5 : 
+                      type === 'BOTTLING' ? 20 : 
+                      Math.floor(Math.random() * 10) + 1;
+
+      return {
+        name: `${type.charAt(0) + type.slice(1).toLowerCase()} ${index + 1}`,
+        type,
+        capacity,
+        status,
+        notes: `Sample ${type.toLowerCase()} equipment ${index + 1}`
+      };
+    });
+
+    const sampleContainers = Array.from({ length: 12 }, (_, index) => {
+      const type = containerTypes[Math.floor(Math.random() * containerTypes.length)];
+      const status = containerStatuses[Math.floor(Math.random() * containerStatuses.length)];
+      const capacity = type === 'BOTTLE' ? 0.5 : 
+                      type === 'JAR' ? 1 : 
+                      0.5;
+
+      return {
+        name: `${type.charAt(0) + type.slice(1).toLowerCase()} Set ${index + 1}`,
+        type,
+        capacity,
+        status,
+        notes: `Sample ${type.toLowerCase()} container set ${index + 1}`
+      };
+    });
+
+    for (const equipment of sampleEquipment) {
+      await this.addEquipment(equipment);
+    }
+
+    for (const container of sampleContainers) {
+      await this.addContainer(container);
+    }
   }
 } 
