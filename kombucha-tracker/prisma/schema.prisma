@@ -1,0 +1,240 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Reads from .env file
+}
+
+// --- Enums ---
+
+enum UserRole {
+  ADMIN
+  BREWER
+  VIEWER
+}
+
+enum Stage {
+  F1
+  F2
+  KEGGED
+  BOTTLED
+  COMPLETED
+}
+
+enum BatchType {
+  F1
+  F2
+  KEG
+  BOTTLE
+}
+
+enum EquipmentType {
+  KETTLE
+  FERMENTER
+  KEG
+  BOTTLE
+  OTHER
+}
+
+enum EquipmentStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  DIRTY
+}
+
+enum ContainerType {
+  BOTTLE
+  KEG
+  OTHER
+}
+
+enum ContainerStatus {
+  EMPTY
+  FILLED
+  DIRTY
+}
+
+enum QualityNoteSeverity {
+  INFO
+  WARNING
+  ISSUE
+}
+
+enum QualityCheckType {
+  PH
+  TEMPERATURE
+  TASTE
+  VISUAL
+  OTHER
+}
+
+enum QualityCheckStatus {
+  PASS
+  FAIL
+  WARNING
+}
+
+// --- Models ---
+
+model User {
+  id            String    @id @default(uuid())
+  email         String?   @unique
+  displayName   String?
+  role          UserRole  @default(BREWER)
+  isActive      Boolean   @default(true)
+  lastLogin     DateTime? @updatedAt
+  deactivatedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  createdBatches    Batch[]        @relation("CreatedBatches")
+  modifiedBatches   Batch[]        @relation("ModifiedBatches")
+  createdEquipment  Equipment[]    @relation("CreatedEquipment")
+  createdContainers Container[]    @relation("CreatedContainers")
+  createdQNotes     QualityNote[]  @relation("CreatedQNotes")
+  updatedQNotes     QualityNote[]  @relation("UpdatedQNotes")
+  createdQChecks    QualityCheck[] @relation("CreatedQChecks")
+  updatedQChecks    QualityCheck[] @relation("UpdatedQChecks")
+}
+
+model Batch {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  batchNumber      Int
+  batchDate        DateTime
+  batchType        BatchType
+  volume           Float
+  teaType          String
+  sugarAmount      Float
+  starterAmount    Float
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  createdById      String
+  createdBy        User     @relation("CreatedBatches", fields: [createdById], references: [id])
+  lastModifiedById String
+  lastModifiedBy   User     @relation("ModifiedBatches", fields: [lastModifiedById], references: [id])
+
+  parentBatchId    String?
+  parentBatch      Batch?   @relation("BatchChildren", fields: [parentBatchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  childBatches     Batch[]  @relation("BatchChildren")
+
+  currentStage     Stage
+  stageHistoryJson String 
+
+  currentEquipmentId String?
+  currentEquipment   Equipment? @relation("CurrentBatches") // Relation name only
+  equipmentHistoryJson String
+
+  measurementsJson String 
+  checklistsJson   String? 
+  flavoringJson    String? 
+  finishingJson    String? 
+  
+  qualityNotes     QualityNote[] @relation("BatchQualityNotes")
+
+  @@index([createdById])
+  @@index([lastModifiedById])
+  @@index([parentBatchId])
+  @@index([currentEquipmentId])
+}
+
+model Equipment {
+  id          String    @id @default(cuid())
+  name        String
+  type        EquipmentType
+  capacity    Float
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdById String
+  createdBy   User      @relation("CreatedEquipment", fields: [createdById], references: [id])
+  
+  currentStatus   EquipmentStatus @default(AVAILABLE)
+  statusLastUpdated DateTime      @default(now())
+  currentBatchId  String?       @unique 
+  currentBatch    Batch?        @relation("CurrentBatches", fields: [currentBatchId], references: [id]) // Define fields/references here
+
+  maintenanceJson String?
+  
+  @@index([createdById])
+}
+
+model Container {
+  id          String    @id @default(cuid())
+  name        String
+  type        ContainerType
+  capacity    Float
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  createdById String
+  createdBy   User      @relation("CreatedContainers", fields: [createdById], references: [id])
+  
+  currentStatus   ContainerStatus @default(EMPTY)
+  statusLastUpdated DateTime      @default(now())
+  fillDate        DateTime?
+  emptyDate       DateTime?
+  currentBatchId  String?
+
+  @@index([createdById])
+  @@index([currentBatchId])
+}
+
+model QualityNote {
+  id          String              @id @default(cuid())
+  note        String
+  severity    QualityNoteSeverity
+  resolved    Boolean             @default(false)
+  resolution  String?
+  resolvedAt  DateTime?
+  timestamp   DateTime            @default(now())
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  
+  batchId     String
+  batch       Batch   @relation("BatchQualityNotes", fields: [batchId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User    @relation("CreatedQNotes", fields: [createdById], references: [id])
+  updatedById String
+  updatedBy   User    @relation("UpdatedQNotes", fields: [updatedById], references: [id])
+
+  @@index([batchId])
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+model QualityCheck {
+  id          String             @id @default(cuid())
+  type        QualityCheckType
+  value       Float?
+  unit        String?
+  status      QualityCheckStatus
+  notes       String?
+  timestamp   DateTime           @default(now())
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  
+  batchId     String
+  createdById String
+  createdBy   User    @relation("CreatedQChecks", fields: [createdById], references: [id])
+  updatedById String
+  updatedBy   User    @relation("UpdatedQChecks", fields: [updatedById], references: [id])
+
+  @@index([batchId])
+  @@index([createdById])
+  @@index([updatedById])
+}
