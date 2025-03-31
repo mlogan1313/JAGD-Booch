@@ -1,19 +1,23 @@
-import { Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Dashboard from './pages/index';
+import { BatchDetail } from './pages/batch/[id]';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { AuthCallback } from './pages/auth/callback';
 
 function App() {
   return (
     <Routes>
-      <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <div>Dashboard (Coming Soon)</div>
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/" element={
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/batch/:id" element={
+        <ProtectedRoute>
+          <BatchDetail />
+        </ProtectedRoute>
+      } />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
