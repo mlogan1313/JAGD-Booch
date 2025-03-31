@@ -6,6 +6,41 @@ Build a professional-grade web app for tracking daily kombucha production, using
 
 ---
 
+## 📋 Project Checklist
+
+### Setup & Infrastructure
+- [x] Initialize Git repository
+- [x] Set up GitHub repository
+- [x] Configure SSH authentication
+- [ ] Set up GitHub Pages
+- [ ] Initialize React project with Vite
+- [ ] Configure TypeScript
+- [ ] Set up Tailwind CSS
+- [ ] Configure project structure
+
+### Data Layer
+- [ ] Design JSON data structure
+- [ ] Implement GitHub data storage
+- [ ] Set up local storage sync
+- [ ] Create data utilities
+
+### Core Features
+- [ ] Dashboard view
+- [ ] Batch creation form
+- [ ] Batch detail view
+- [ ] Checklist component
+- [ ] Log entry interface
+- [ ] Timeline guidance
+
+### Polish & Optimization
+- [ ] Mobile responsiveness
+- [ ] Offline support
+- [ ] Data export/import
+- [ ] Error handling
+- [ ] Loading states
+
+---
+
 ## 🧱 Current App Structure
 
 - **Frontend**: React + Vite + TypeScript
