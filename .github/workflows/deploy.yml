@@ -12,6 +12,7 @@ permissions:
 
 env:
   VITE_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+  VITE_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
   VITE_GITHUB_REDIRECT_URI: https://mlogan1313.github.io/JAGD-Booch/auth/callback
   VITE_APP_NAME: JAGD Booch Tracker
   VITE_APP_DESCRIPTION: Personal kombucha batch tracking application

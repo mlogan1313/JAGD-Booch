@@ -36,17 +36,35 @@ export const useAuth = create<AuthState>((set) => ({
 
   handleCallback: async (code: string) => {
     try {
-      // In a real app, you'd exchange the code for a token on your backend
-      // For this demo, we'll use the code directly
-      const response = await fetch('https://api.github.com/user', {
+      // Exchange the code for an access token
+      const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${code}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: GITHUB_CLIENT_ID,
+          client_secret: import.meta.env.VITE_GITHUB_CLIENT_SECRET,
+          code,
+          redirect_uri: REDIRECT_URI,
+        }),
+      });
+
+      if (!tokenResponse.ok) throw new Error('Failed to exchange code for token');
+
+      const { access_token } = await tokenResponse.json();
+
+      // Fetch user data with the access token
+      const userResponse = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
         },
       });
 
-      if (!response.ok) throw new Error('Failed to fetch user');
+      if (!userResponse.ok) throw new Error('Failed to fetch user');
 
-      const user = await response.json();
+      const user = await userResponse.json();
       localStorage.setItem('user', JSON.stringify(user));
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (error) {
