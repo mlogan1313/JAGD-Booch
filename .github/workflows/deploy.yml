@@ -15,6 +15,7 @@ env:
   VITE_GITHUB_REDIRECT_URI: https://mlogan1313.github.io/JAGD-Booch/auth/callback
   VITE_APP_NAME: JAGD Booch Tracker
   VITE_APP_DESCRIPTION: Personal kombucha batch tracking application
+  VITE_BASE_URL: /JAGD-Booch/
 
 jobs:
   build:
