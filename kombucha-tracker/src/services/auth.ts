@@ -26,18 +26,23 @@ export const useAuth = create<AuthState>((set) => ({
   login: () => {
     const scope = 'read:user';
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=${scope}`;
+    console.log('Redirecting to GitHub:', githubAuthUrl);
     window.location.href = githubAuthUrl;
   },
 
   logout: () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('access_token');
     set({ user: null, isAuthenticated: false });
   },
 
   handleCallback: async (code: string) => {
     try {
-      // Exchange the code for an access token
-      const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      set({ isLoading: true });
+      console.log('Exchanging code for token...');
+      
+      // Exchange the code for an access token using the proxy
+      const tokenResponse = await fetch('/api/oauth/login/oauth/access_token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,25 +56,47 @@ export const useAuth = create<AuthState>((set) => ({
         }),
       });
 
-      if (!tokenResponse.ok) throw new Error('Failed to exchange code for token');
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error('Token exchange failed:', errorText);
+        throw new Error('Failed to exchange code for token');
+      }
 
       const { access_token } = await tokenResponse.json();
+      console.log('Token exchange successful');
 
-      // Fetch user data with the access token
-      const userResponse = await fetch('https://api.github.com/user', {
+      // Store the access token
+      localStorage.setItem('access_token', access_token);
+
+      // Fetch user data with the access token using the proxy
+      const userResponse = await fetch('/api/github/user', {
         headers: {
           Authorization: `Bearer ${access_token}`,
+          Accept: 'application/vnd.github.v3+json',
         },
       });
 
-      if (!userResponse.ok) throw new Error('Failed to fetch user');
+      if (!userResponse.ok) {
+        const errorText = await userResponse.text();
+        console.error('User fetch failed:', errorText);
+        throw new Error('Failed to fetch user');
+      }
 
       const user = await userResponse.json();
+      
+      // Store user data and update state
       localStorage.setItem('user', JSON.stringify(user));
-      set({ user, isAuthenticated: true, isLoading: false });
+      set({ 
+        user, 
+        isAuthenticated: true, 
+        isLoading: false 
+      });
+      
+      console.log('Auth state updated:', { user, isAuthenticated: true });
     } catch (error) {
       console.error('Authentication error:', error);
       set({ isLoading: false });
+      throw error;
     }
   },
 }));
